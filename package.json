@@ -50,7 +50,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/git": "^10.0.1",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
