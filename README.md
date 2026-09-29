@@ -1,9 +1,9 @@
 # expo-native-toast
 
-[![npm version](https://img.shields.io/npm/v/@nauverse/expo-native-toast)](https://www.npmjs.com/package/@nauverse/expo-native-toast)
+[![npm version](https://img.shields.io/npm/v/@nauverse/expo-native-toast?style=flat)](https://www.npmjs.com/package/@nauverse/expo-native-toast)
 [![CI](https://github.com/TheNaubit/expo-native-toast/actions/workflows/ci.yml/badge.svg)](https://github.com/TheNaubit/expo-native-toast/actions/workflows/ci.yml)
 [![Release](https://github.com/TheNaubit/expo-native-toast/actions/workflows/release.yml/badge.svg)](https://github.com/TheNaubit/expo-native-toast/actions/workflows/release.yml)
-[![License: MIT](https://img.shields.io/npm/l/@nauverse/expo-native-toast)](https://github.com/TheNaubit/expo-native-toast/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/npm/l/@nauverse/expo-native-toast?style=flat)](https://github.com/TheNaubit/expo-native-toast/blob/main/LICENSE)
 
 Native toasts for Expo. iOS uses SwiftUI with Liquid Glass. Android uses a Material `Snackbar`. Each toast plays a semantic haptic and announces itself to the screen reader.
 
