@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="native_toast_error_icon">#FFFFB4AB</color>
+  <color name="native_toast_info_icon">#FFA8C7FA</color>
+  <color name="native_toast_success_icon">#FF78D59A</color>
+  <color name="native_toast_warning_icon">#FFF6C453</color>
+</resources>

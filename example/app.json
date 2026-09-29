@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Toast Example",
+    "slug": "expo-native-toast-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "bundleIdentifier": "com.nauverse.expo-native-toast-example" },
+    "android": { "package": "com.nauverse.exponativetoastexample" }
+  }
+}

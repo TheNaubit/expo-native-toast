@@ -1,0 +1,27 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+expoModule {
+  v2 = true
+}
+
+group = 'expo.modules.nativetoast'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.nativetoast"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+    consumerProguardFiles 'consumer-rules.pro'
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  implementation 'com.google.android.material:material:1.13.0'
+}

@@ -1,0 +1,68 @@
+{
+  "name": "@nauverse/expo-native-toast",
+  "version": "0.0.0",
+  "description": "Native toasts for Expo: Liquid Glass on iOS, Material Snackbar on Android, with semantic haptics and screen-reader announcements",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "files": [
+    "build",
+    "android",
+    "ios",
+    "src",
+    "!src/__tests__",
+    "!android/build",
+    "expo-module.config.json"
+  ],
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "typecheck": "tsc --noEmit",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "expo-module": "expo-module"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "expo-modules",
+    "toast",
+    "snackbar",
+    "liquid-glass",
+    "haptics",
+    "accessibility",
+    "ios",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheNaubit/expo-native-toast.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheNaubit/expo-native-toast/issues"
+  },
+  "author": "TheNaubit <22015497+TheNaubit@users.noreply.github.com> (https://github.com/TheNaubit)",
+  "license": "MIT",
+  "homepage": "https://github.com/TheNaubit/expo-native-toast#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/react": "~19.1.0",
+    "expo": "58.0.0-preview.8",
+    "expo-module-scripts": "56.0.3",
+    "react": "19.3.0",
+    "react-native": "0.88.0-rc.1",
+    "semantic-release": "^25.0.3"
+  },
+  "peerDependencies": {
+    "expo": ">=58.0.0-0",
+    "react": "*",
+    "react-native": "*"
+  }
+}

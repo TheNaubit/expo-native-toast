@@ -1,0 +1,38 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [iOS, Android, Both]
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Expo SDK, React Native, and OS version
+      placeholder: "SDK 58, RN 0.88, iOS 26.1"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Include the `show(...)` call and any React Native `Modal` or bottom tab setup.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
