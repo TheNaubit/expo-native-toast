@@ -90,6 +90,9 @@ example/                   demo app files (App.tsx and Metro config)
 - Compiling is not proof. A touch bug hid behind a green build: the SwiftUI frame reached the container as an empty rect, so every touch passed through. Always tap the button in a running app and check the result.
 - Report the toast frame from a `GeometryReader` with `onAppear` and `onChange(of: proxy.size)`. A `PreferenceKey` with `onPreferenceChange` delivered only the default value here.
 - The UIHostingController view is added to the window without a parent controller. It gets no safe area. The container lays it out below `safeAreaInsets.top`, and `safeAreaRegions = []` stops SwiftUI from adding the inset again.
+- Start the entrance from the view: `onAppear` then `DispatchQueue.main.async { state.isVisible = true }`. If the presenter flips the state before SwiftUI renders once, the first render is already "visible". Then nothing animates and `onChange` never runs, and the staged content stays hidden.
+- Do not read the toast frame from `proxy.frame(in:)` while a `scaleEffect` or `offset` runs. Report `proxy.size` only. The container derives the position because the toast is centered at a fixed top padding.
+- Card look follows the reference: about 12 pt padding, a 28 pt tall action button with a 10 pt radius, and a width that fits the content.
 - Toasts last a few seconds and tool calls are slow. Use a long `duration` in the example when you test a tap.
 - Debug with temporary `NSLog` lines and `xcrun simctl spawn <sim> log stream`. Remove them before you commit.
 

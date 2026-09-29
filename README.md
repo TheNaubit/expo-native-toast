@@ -125,8 +125,10 @@ Listen for the action of one toast.
 
 ### iOS
 
-- A toast with only a title is a compact capsule. The icon appears first. Then the capsule grows to show the title.
-- A toast with a message or an action is a card. The card shows the icon, title, message, and a full-width action button.
+- A toast with only a title is a compact capsule. It drops out of the Dynamic Island, then widens to show the title.
+- A toast with a message or an action is a card. The card grows out of the shape of the Dynamic Island with a light spring. The title and message fade in first. The action button follows. The card fits its content, up to 340 points wide.
+- On exit the toast shrinks back toward the island. With Reduce Motion on, it only fades.
+- Devices without a Dynamic Island slide the toast in from just above the screen edge.
 - The toast sits in the active window, above modals. Touches pass through everywhere except the toast itself.
 - If the app is not active, the toast waits and shows when the app returns. It expires after 30 seconds.
 - Success, warning, and error use `UINotificationFeedbackGenerator`. Info uses a soft impact.

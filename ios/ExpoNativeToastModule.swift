@@ -99,12 +99,32 @@ private enum NativeToastKind: String {
   }
 }
 
+/// Layout values shared by the SwiftUI view and the touch container.
+private enum NativeToastLayout {
+  /// Space between the top safe area and the toast.
+  static let topPadding: CGFloat = 8
+  /// Size of the Dynamic Island. The toast grows out of this shape.
+  static let islandSize = CGSize(width: 126, height: 37)
+  /// Distance from the top of the screen to the Dynamic Island.
+  static let islandTop: CGFloat = 11
+  /// Extra touch area around the toast.
+  static let touchSlop: CGFloat = 8
+}
+
+/// Drives the enter and exit animation. The presenter flips `isVisible`.
+@MainActor
+private final class NativeToastState: ObservableObject {
+  @Published var isVisible = false
+}
+
 /// A container that passes touches through, except on the toast surface.
 ///
 /// SwiftUI handles gestures in the hosting view. Hit testing cannot tell a button
-/// from empty space. The SwiftUI view reports the frame of the toast instead.
+/// from empty space. The SwiftUI view reports the size of the toast. The toast is
+/// centered, so the container derives its position. A transform or an animation on
+/// the toast does not change this rect.
 private final class NativeToastContainerView: UIView {
-  var interactiveFrame: CGRect = .zero
+  var interactiveSize: CGSize = .zero
 
   /// The SwiftUI view. It sits below the top safe area (status bar and Dynamic Island).
   var contentView: UIView? {
@@ -128,10 +148,16 @@ private final class NativeToastContainerView: UIView {
   }
 
   override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-    // `interactiveFrame` is in the coordinate space of the SwiftUI view. Convert the point.
     let offset = contentView?.frame.origin ?? .zero
     let local = CGPoint(x: point.x - offset.x, y: point.y - offset.y)
-    guard interactiveFrame.contains(local) else { return nil }
+    let width = contentView?.bounds.width ?? bounds.width
+    let toastFrame = CGRect(
+      x: (width - interactiveSize.width) / 2,
+      y: NativeToastLayout.topPadding,
+      width: interactiveSize.width,
+      height: interactiveSize.height
+    ).insetBy(dx: -NativeToastLayout.touchSlop, dy: -NativeToastLayout.touchSlop)
+    guard interactiveSize != .zero, toastFrame.contains(local) else { return nil }
     return super.hitTest(point, with: event)
   }
 }
@@ -139,6 +165,7 @@ private final class NativeToastContainerView: UIView {
 private struct PresentedToast {
   let container: NativeToastContainerView
   let controller: UIViewController
+  let state: NativeToastState
 
   func remove() {
     controller.willMove(toParent: nil)
@@ -157,9 +184,8 @@ private struct PendingToast {
 private final class NativeToastPresenter {
   static let shared = NativeToastPresenter()
 
-  private static let enterDuration: TimeInterval = 0.34
-  private static let exitDuration: TimeInterval = 0.2
-  private static let enterOffset: CGFloat = -16
+  /// The exit animation runs in SwiftUI. The view is removed after this time.
+  private static let exitDuration: TimeInterval = 0.34
 
   private var dismissTask: Task<Void, Never>?
   private var presented: PresentedToast?
@@ -245,12 +271,19 @@ private final class NativeToastPresenter {
     container.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     container.backgroundColor = .clear
 
+    let state = NativeToastState()
+    // Distance from the final position back up to the Dynamic Island. Devices without an
+    // island slide in from just above the screen edge instead.
+    let toTheIsland =
+      hostWindow.safeAreaInsets.top + NativeToastLayout.topPadding - NativeToastLayout.islandTop
     let controller = UIHostingController(
       rootView: NativeToastView(
         options: options,
         kind: kind,
-        onFrameChange: { [weak container] frame in
-          container?.interactiveFrame = frame.insetBy(dx: -8, dy: -8)
+        state: state,
+        originOffset: -max(toTheIsland, 40),
+        onSizeChange: { [weak container] size in
+          container?.interactiveSize = size
         },
         onAction: { [weak self] in
           onAction()
@@ -266,23 +299,7 @@ private final class NativeToastPresenter {
     container.contentView = controller.view
     hostWindow.addSubview(container)
 
-    let animatesMotion = !UIAccessibility.isReduceMotionEnabled
-    container.alpha = 0
-    if animatesMotion {
-      container.transform = CGAffineTransform(translationX: 0, y: Self.enterOffset)
-    }
-    UIView.animate(
-      withDuration: Self.enterDuration,
-      delay: 0,
-      usingSpringWithDamping: 1,
-      initialSpringVelocity: 0,
-      options: [.beginFromCurrentState, .allowUserInteraction]
-    ) {
-      container.alpha = 1
-      container.transform = .identity
-    }
-
-    presented = PresentedToast(container: container, controller: controller)
+    presented = PresentedToast(container: container, controller: controller, state: state)
     let needsMoreTimeForVoiceOver =
       UIAccessibility.isVoiceOverRunning && !(options.actionLabel ?? "").isEmpty
     scheduleDismiss(
@@ -317,13 +334,8 @@ private final class NativeToastPresenter {
       return
     }
 
-    UIView.animate(
-      withDuration: Self.exitDuration,
-      delay: 0,
-      options: [.beginFromCurrentState, .curveEaseIn]
-    ) {
-      current.container.alpha = 0
-    } completion: { _ in
+    current.state.isVisible = false
+    DispatchQueue.main.asyncAfter(deadline: .now() + Self.exitDuration) {
       current.remove()
     }
   }
@@ -352,28 +364,27 @@ private final class NativeToastPresenter {
 private struct NativeToastView: View {
   let options: NativeToastOptions
   let kind: NativeToastKind
-  let onFrameChange: (CGRect) -> Void
+  @ObservedObject var state: NativeToastState
+  let originOffset: CGFloat
+  let onSizeChange: (CGSize) -> Void
   let onAction: () -> Void
 
-  @State private var revealsTitle: Bool
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var measuredSize: CGSize = .zero
+  @State private var revealsTitle = false
+  @State private var showsContent = false
+  @State private var showsAction = false
 
-  private static let coordinateSpaceName = "NativeToastRoot"
-  private static let cardCornerRadius: CGFloat = 26
-  private static let cardMaxWidth: CGFloat = 480
+  private static let cardCornerRadius: CGFloat = 24
+  private static let cardMinWidth: CGFloat = 220
+  private static let cardMaxWidth: CGFloat = 340
+  private static let actionCornerRadius: CGFloat = 10
+  private static let capsuleCollapsedScale: CGFloat = 0.55
 
-  init(
-    options: NativeToastOptions,
-    kind: NativeToastKind,
-    onFrameChange: @escaping (CGRect) -> Void,
-    onAction: @escaping () -> Void
-  ) {
-    self.options = options
-    self.kind = kind
-    self.onFrameChange = onFrameChange
-    self.onAction = onAction
-    // A card shows all content at once. Only the compact capsule reveals its title.
-    _revealsTitle = State(initialValue: options.hasCardContent)
-  }
+  private static let enterSpring = Animation.spring(response: 0.5, dampingFraction: 0.74)
+  private static let exitSpring = Animation.spring(response: 0.3, dampingFraction: 1)
+  private static let enterFade = Animation.easeOut(duration: 0.18)
+  private static let exitFade = Animation.easeIn(duration: 0.2)
 
   var body: some View {
     VStack {
@@ -381,49 +392,90 @@ private struct NativeToastView: View {
         .background(
           GeometryReader { proxy in
             Color.clear
-              .onAppear { reportFrame(proxy) }
-              .onChange(of: proxy.size) { _ in reportFrame(proxy) }
+              .onAppear { measuredSize = proxy.size; onSizeChange(proxy.size) }
+              .onChange(of: proxy.size) { size in measuredSize = size; onSizeChange(size) }
           }
         )
-        .padding(.top, 8)
+        .opacity(state.isVisible ? 1 : 0)
+        .blur(radius: state.isVisible || reduceMotion ? 0 : 8)
+        .animation(state.isVisible ? Self.enterFade : Self.exitFade, value: state.isVisible)
+        .scaleEffect(
+          x: state.isVisible || reduceMotion ? 1 : collapsedScale.width,
+          y: state.isVisible || reduceMotion ? 1 : collapsedScale.height,
+          anchor: .top
+        )
+        .offset(y: state.isVisible || reduceMotion ? 0 : originOffset)
+        .animation(state.isVisible ? Self.enterSpring : Self.exitSpring, value: state.isVisible)
+        .padding(.top, NativeToastLayout.topPadding)
         .padding(.horizontal, 12)
       Spacer()
     }
     .background(Color.clear)
-    .coordinateSpace(name: Self.coordinateSpaceName)
+    .onChange(of: state.isVisible) { visible in stageContent(visible) }
     .onAppear {
-      guard !revealsTitle else { return }
-      withAnimation(.spring(response: 0.34, dampingFraction: 0.9).delay(0.12)) {
-        revealsTitle = true
-      }
+      // SwiftUI has now rendered the collapsed state. Start the entrance on the next turn,
+      // so `isVisible` changes after the first render and the animation runs.
+      DispatchQueue.main.async { state.isVisible = true }
     }
   }
 
-  private func reportFrame(_ proxy: GeometryProxy) {
-    let frame = proxy.frame(in: .named(Self.coordinateSpaceName))
-    onFrameChange(frame)
+  /// The card starts as the shape of the Dynamic Island and grows to its full size.
+  private var collapsedScale: CGSize {
+    guard options.hasCardContent, measuredSize.width > 0, measuredSize.height > 0 else {
+      return CGSize(width: Self.capsuleCollapsedScale, height: Self.capsuleCollapsedScale)
+    }
+    return CGSize(
+      width: min(1, NativeToastLayout.islandSize.width / measuredSize.width),
+      height: min(1, NativeToastLayout.islandSize.height / measuredSize.height)
+    )
+  }
+
+  /// Show the content after the surface starts to grow. The action appears last.
+  private func stageContent(_ visible: Bool) {
+    if reduceMotion {
+      revealsTitle = visible
+      showsContent = visible
+      showsAction = visible
+      return
+    }
+    if visible {
+      withAnimation(.spring(response: 0.45, dampingFraction: 0.8).delay(0.2)) {
+        revealsTitle = true
+      }
+      withAnimation(.easeOut(duration: 0.24).delay(0.12)) { showsContent = true }
+      withAnimation(.easeOut(duration: 0.24).delay(0.22)) { showsAction = true }
+    } else {
+      withAnimation(.easeIn(duration: 0.12)) {
+        showsContent = false
+        showsAction = false
+      }
+    }
   }
 
   @ViewBuilder
   private var toastSurface: some View {
     if options.hasCardContent {
-      surface(cardContent, shape: RoundedRectangle(cornerRadius: Self.cardCornerRadius, style: .continuous))
-        .frame(maxWidth: Self.cardMaxWidth)
+      surface(
+        cardContent,
+        shape: RoundedRectangle(cornerRadius: Self.cardCornerRadius, style: .continuous)
+      )
+      .frame(minWidth: Self.cardMinWidth, maxWidth: Self.cardMaxWidth)
+      .fixedSize(horizontal: true, vertical: false)
     } else {
       surface(capsuleContent, shape: Capsule())
     }
   }
 
-  private var icon: some View {
+  private func icon(size: CGFloat) -> some View {
     Image(systemName: kind.symbol)
-      .font(.system(size: 16, weight: .semibold))
+      .font(.system(size: size, weight: .semibold))
       .foregroundStyle(kind.tint)
       .accessibilityHidden(true)
   }
 
   private var capsuleContent: some View {
     HStack(alignment: .center, spacing: revealsTitle ? 8 : 0) {
-      icon
+      icon(size: 16)
       if revealsTitle {
         ViewThatFits(in: .horizontal) {
           Text(options.title)
@@ -444,13 +496,12 @@ private struct NativeToastView: View {
   }
 
   private var cardContent: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(alignment: .top, spacing: 10) {
-        icon
-          .padding(.top, 2)
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .center, spacing: 10) {
+        icon(size: 20)
         VStack(alignment: .leading, spacing: 2) {
           Text(options.title)
-            .font(.subheadline.weight(.semibold))
+            .font(.callout.weight(.semibold))
             .foregroundStyle(.primary)
             .lineLimit(2)
           if let message = options.message, !message.isEmpty {
@@ -463,6 +514,8 @@ private struct NativeToastView: View {
         .multilineTextAlignment(.leading)
         Spacer(minLength: 0)
       }
+      .opacity(showsContent ? 1 : 0)
+      .blur(radius: showsContent || reduceMotion ? 0 : 4)
       .accessibilityElement(children: .combine)
 
       if let label = options.actionLabel, !label.isEmpty {
@@ -472,20 +525,22 @@ private struct NativeToastView: View {
             .foregroundStyle(.primary)
             .lineLimit(2)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, minHeight: 36)
-            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 28)
             .background(
               Color.primary.opacity(0.12),
-              in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+              in: RoundedRectangle(cornerRadius: Self.actionCornerRadius, style: .continuous)
             )
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(
+              RoundedRectangle(cornerRadius: Self.actionCornerRadius, style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isButton)
+        .opacity(showsAction ? 1 : 0)
+        .offset(y: showsAction || reduceMotion ? 0 : 6)
       }
     }
-    .padding(.horizontal, 16)
-    .padding(.vertical, 14)
+    .padding(12)
     .accessibilityElement(children: .contain)
   }
 
