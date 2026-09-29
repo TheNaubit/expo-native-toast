@@ -108,6 +108,7 @@ example/                   demo app files (App.tsx and Metro config)
 
 - Use Conventional Commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`, `perf:`, `ci:`.
 - Do not add "Co-Authored-By" or similar lines to commit messages.
+- Publishing uses npm trusted publishing (OIDC) for `TheNaubit/expo-native-toast` and `release.yml`. There is no `NPM_TOKEN` secret. Do not add one. If you rename the workflow file, update the trusted publisher on npm.
 - `semantic-release` runs on `main` and sets the version. Keep `version` in `package.json` at `0.0.0` in source.
 - Before you publish, check the tarball with `npm pack --dry-run`. It must not include `android/build`, tests, or `example/`.
 - The Android Gradle version and the podspec version do not drive releases. Do not bump them by hand.
