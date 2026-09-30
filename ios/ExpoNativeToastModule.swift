@@ -334,6 +334,9 @@ private final class NativeToastPresenter {
       return
     }
 
+    // The view stays on screen during the exit animation. A second tap on the action
+    // button must not send the action event again.
+    current.container.isUserInteractionEnabled = false
     current.state.isVisible = false
     DispatchQueue.main.asyncAfter(deadline: .now() + Self.exitDuration) {
       current.remove()

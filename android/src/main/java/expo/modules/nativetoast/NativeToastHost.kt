@@ -118,7 +118,14 @@ internal object NativeToastHost : Application.ActivityLifecycleCallbacks {
       findBottomNavigationAnchor(activity.window.decorView)?.let(snackbar::setAnchorView)
       styleMessage(snackbar, kind)
       options.actionLabel?.takeIf(String::isNotBlank)?.let { label ->
-        snackbar.setAction(label) { onAction() }
+        // The button stays tappable during the dismiss animation. Send the action once.
+        var actionSent = false
+        snackbar.setAction(label) {
+          if (!actionSent) {
+            actionSent = true
+            onAction()
+          }
+        }
       }
       snackbar.show()
       currentSnackbar = WeakReference(snackbar)

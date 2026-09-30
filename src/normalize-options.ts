@@ -20,6 +20,9 @@ const TOAST_TYPES: readonly NativeToastType[] = [
   "success",
 ];
 const ELLIPSIS = "…";
+/** UTF-16 range of the first half of a surrogate pair (emoji and other astral characters). */
+const HIGH_SURROGATE_START = 0xd800;
+const HIGH_SURROGATE_END = 0xdbff;
 
 let idCounter = 0;
 
@@ -33,7 +36,15 @@ function cleanText(value: unknown, maxLength: number): string | undefined {
   const trimmed = value.trim();
   if (trimmed.length === 0) return undefined;
   if (trimmed.length <= maxLength) return trimmed;
-  return `${trimmed.slice(0, maxLength - ELLIPSIS.length).trimEnd()}${ELLIPSIS}`;
+  return `${sliceWithoutSplittingPairs(trimmed, maxLength - ELLIPSIS.length).trimEnd()}${ELLIPSIS}`;
+}
+
+/** Cut to `end` UTF-16 units, but never between the two halves of a surrogate pair. */
+function sliceWithoutSplittingPairs(text: string, end: number): string {
+  const lastKept = text.charCodeAt(end - 1);
+  const isHighSurrogate =
+    lastKept >= HIGH_SURROGATE_START && lastKept <= HIGH_SURROGATE_END;
+  return text.slice(0, isHighSurrogate ? end - 1 : end);
 }
 
 function cleanType(value: unknown): NativeToastType {

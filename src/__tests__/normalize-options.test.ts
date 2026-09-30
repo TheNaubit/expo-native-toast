@@ -62,6 +62,17 @@ describe("normalizeOptions", () => {
     expect(result).not.toHaveProperty("actionLabel");
   });
 
+  it("does not split an emoji when it truncates", () => {
+    // The cut lands between the two UTF-16 halves of the emoji
+    const title = `${"a".repeat(MAX_TITLE_LENGTH - 2)}\u{1F600}${"b".repeat(10)}`;
+    const result = normalizeOptions({ title });
+    const loneSurrogate =
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+    expect(result?.title).not.toMatch(loneSurrogate);
+    expect(result?.title.endsWith("…")).toBe(true);
+    expect(result?.title.length).toBeLessThanOrEqual(MAX_TITLE_LENGTH);
+  });
+
   it("truncates very long text", () => {
     const result = normalizeOptions({
       title: "a".repeat(MAX_TITLE_LENGTH + 50),
