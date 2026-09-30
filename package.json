@@ -1,6 +1,6 @@
 {
   "name": "@nauverse/expo-native-toast",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Native toasts for Expo: Liquid Glass on iOS, Material Snackbar on Android, with semantic haptics and screen-reader announcements",
   "main": "build/index.js",
   "types": "build/index.d.ts",

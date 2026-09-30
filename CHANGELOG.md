@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/TheNaubit/expo-native-toast/compare/v1.0.0...v1.0.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* send toast actions once and keep emoji intact when truncating ([6ee5ab8](https://github.com/TheNaubit/expo-native-toast/commit/6ee5ab8c658063f69412a1e2053bcd79b912a050))
+
 # 1.0.0 (2026-09-29)
 
 
