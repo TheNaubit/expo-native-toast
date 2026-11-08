@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/TheNaubit/expo-native-toast/compare/v1.0.1...v1.0.2) (2026-11-08)
+
+
+### Bug Fixes
+
+* **deps:** consolidate Dependabot PRs and resolve security alerts ([#10](https://github.com/TheNaubit/expo-native-toast/issues/10)) ([2ea1f76](https://github.com/TheNaubit/expo-native-toast/commit/2ea1f76da3d713c0cae5110b6d3c3840a2ccd9a2))
+
 ## [1.0.1](https://github.com/TheNaubit/expo-native-toast/compare/v1.0.0...v1.0.1) (2026-09-30)
 
 
